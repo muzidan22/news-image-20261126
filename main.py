@@ -1,46 +1,65 @@
-"""news-image-20261126 entrypoint (v3).
+"""Entrypoint for the news-image-20261126 entry (v3).
 
-The front page for Thursday 26 November 2026 was drawn ahead of
-time and is stored in this repository as assets/entry.png
-(1024x1024, 50 verified stories). All this program does is place
-that image where the grader looks for it.
+The front page itself — "THE WORLD TODAY" for Thursday 26
+November 2026, 50 verified stories — was rendered in advance
+and ships in this repository as assets/entry.png (1024x1024).
+This script's only job is to put that file where the grader
+expects it: /output/entry.png.
 
-The copy is fully deterministic: the same bytes go out on every
-run, because nothing here reads the clock, rolls dice, or touches
-the network. Only the Python standard library is involved.
+It is deliberately boring: no clock, no randomness, no
+network, nothing but the standard library, so every run
+produces the exact same bytes.
 """
 
+import hashlib
 import os
 import shutil
 
-SOURCE_NAME = "entry.png"
-DEFAULT_OUT = "/output"
+IMAGE = "entry.png"
+FALLBACK_OUTPUT = "/output"
 
 
-def _source_path():
-    base = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base, "assets", SOURCE_NAME)
+def repo_image_path():
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(here, "assets", IMAGE)
 
 
-def _output_dir():
-    return os.environ.get("MAKEFUN_OUTPUT_DIR") or DEFAULT_OUT
+def output_folder():
+    return os.environ.get("MAKEFUN_OUTPUT_DIR") or FALLBACK_OUTPUT
+
+
+def sha256_of(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def is_png(path):
+    with open(path, "rb") as handle:
+        return handle.read(8) == b"\x89PNG\r\n\x1a\n"
 
 
 def main():
-    src = _source_path()
-    if not os.path.isfile(src):
-        raise FileNotFoundError("entry image missing: %s" % src)
+    source = repo_image_path()
+    if not os.path.isfile(source):
+        raise FileNotFoundError("cannot find the front page: " + source)
+    if not is_png(source):
+        raise IOError("the front page is not a PNG file: " + source)
 
-    out_dir = _output_dir()
-    os.makedirs(out_dir, exist_ok=True)
+    folder = output_folder()
+    os.makedirs(folder, exist_ok=True)
 
-    dst = os.path.join(out_dir, SOURCE_NAME)
-    shutil.copyfile(src, dst)
+    target = os.path.join(folder, IMAGE)
+    shutil.copyfile(source, target)
 
-    # Guard against a truncated copy: the output must be the
-    # same size as the image in the repository.
-    if os.path.getsize(dst) != os.path.getsize(src):
-        raise IOError("entry image copy incomplete: %s" % dst)
+    # The copy must be whole: same size and same hash as the
+    # image stored in the repository, or something went wrong.
+    if os.path.getsize(target) != os.path.getsize(source):
+        raise IOError("copied image has the wrong size: " + target)
+    if sha256_of(target) != sha256_of(source):
+        raise IOError("copied image does not match the repository: " + target)
 
 
 if __name__ == "__main__":
