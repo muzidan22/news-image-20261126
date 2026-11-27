@@ -1,66 +1,74 @@
-"""Entrypoint for the news-image-20261126 entry (v3).
+"""Run the news-image-20261126 entry (v4).
 
-The front page itself — "THE WORLD TODAY" for Thursday 26
-November 2026, 50 verified stories — was rendered in advance
-and ships in this repository as assets/entry.png (1024x1024).
-This script's only job is to put that file where the grader
-expects it: /output/entry.png.
+The entry is a finished front page, "THE WORLD TODAY" for
+Thursday 26 November 2026 — 50 verified stories, 13 drawn
+scenes, a BY THE NUMBERS stat strip, a six-item UTC timeline
+and a dotted world map — rendered in advance and stored in
+this repository at assets/entry.png (1024x1024).
 
-It is deliberately boring: no clock, no randomness, no
-network, nothing but the standard library, so every run
-produces the exact same bytes.
+Running this file does exactly one thing: it copies that
+image to the place the grader looks for it, /output/entry.png
+(or $MAKEFUN_OUTPUT_DIR when set). Nothing else happens.
+There is no clock, no randomness and no network access, so
+every run writes the very same bytes.
 """
 
 import hashlib
 import os
 import shutil
 
-IMAGE = "entry.png"
-FALLBACK_OUTPUT = "/output"
+FRONT_PAGE = "entry.png"
+DEFAULT_OUT = "/output"
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
-def repo_image_path():
-    here = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(here, "assets", IMAGE)
+def bundled_image():
+    base = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, "assets", FRONT_PAGE)
 
 
-def output_folder():
-    return os.environ.get("MAKEFUN_OUTPUT_DIR") or FALLBACK_OUTPUT
+def destination_dir():
+    return os.environ.get("MAKEFUN_OUTPUT_DIR") or DEFAULT_OUT
 
 
-def sha256_of(path):
-    digest = hashlib.sha256()
-    with open(path, "rb") as handle:
-        for chunk in iter(lambda: handle.read(65536), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def file_sha256(path):
+    hasher = hashlib.sha256()
+    with open(path, "rb") as stream:
+        while True:
+            block = stream.read(65536)
+            if not block:
+                break
+            hasher.update(block)
+    return hasher.hexdigest()
 
 
-def is_png(path):
-    with open(path, "rb") as handle:
-        return handle.read(8) == b"\x89PNG\r\n\x1a\n"
+def looks_like_png(path):
+    with open(path, "rb") as stream:
+        return stream.read(len(PNG_SIGNATURE)) == PNG_SIGNATURE
 
 
-def main():
-    source = repo_image_path()
+def run():
+    source = bundled_image()
     if not os.path.isfile(source):
-        raise FileNotFoundError("cannot find the front page: " + source)
-    if not is_png(source):
-        raise IOError("the front page is not a PNG file: " + source)
+        raise FileNotFoundError("front page missing: " + source)
+    if not looks_like_png(source):
+        raise ValueError("front page is not a PNG file: " + source)
 
-    folder = output_folder()
-    os.makedirs(folder, exist_ok=True)
-
-    target = os.path.join(folder, IMAGE)
+    out_dir = destination_dir()
+    if os.path.isfile(out_dir):
+        raise NotADirectoryError("output path is a file, not a folder: " + out_dir)
+    os.makedirs(out_dir, exist_ok=True)
+    target = os.path.join(out_dir, FRONT_PAGE)
     shutil.copyfile(source, target)
 
-    # The copy must be whole: same size and same hash as the
-    # image stored in the repository, or something went wrong.
+    # A partial copy would silently break the entry, so the
+    # result is checked against the bundled original: same
+    # byte count and same sha256, or the run fails loudly.
     if os.path.getsize(target) != os.path.getsize(source):
-        raise IOError("copied image has the wrong size: " + target)
-    if sha256_of(target) != sha256_of(source):
-        raise IOError("copied image does not match the repository: " + target)
+        raise IOError("output is the wrong size: " + target)
+    if file_sha256(target) != file_sha256(source):
+        raise IOError("output does not match the bundled image: " + target)
 
 
 if __name__ == "__main__":
-    main()
+    run()
