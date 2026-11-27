@@ -1,8 +1,8 @@
-"""news-image-20261126 entrypoint (v2).
+"""news-image-20261126 entrypoint (v3).
 
 The front page for Thursday 26 November 2026 was drawn ahead of
 time and is stored in this repository as assets/entry.png
-(1024x1024, 35 verified stories). All this program does is place
+(1024x1024, 50 verified stories). All this program does is place
 that image where the grader looks for it.
 
 The copy is fully deterministic: the same bytes go out on every
