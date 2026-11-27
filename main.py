@@ -1,73 +1,70 @@
-"""Run the news-image-20261126 entry (v4).
+"""Run the news-image-20261126 entry (v5).
 
 The entry is a finished front page, "THE WORLD TODAY" for
-Thursday 26 November 2026 — 50 verified stories, 13 drawn
-scenes, a BY THE NUMBERS stat strip, a six-item UTC timeline
-and a dotted world map — rendered in advance and stored in
-this repository at assets/entry.png (1024x1024).
+Thursday 26 November 2026 — 36 verified stories, each with
+its source named, a coloured region strip, a six-item UTC
+timeline and a dotted world map — rendered in advance and
+stored in this repository at assets/entry.png (1024x1024).
 
-Running this file does exactly one thing: it copies that
-image to the place the grader looks for it, /output/entry.png
-(or $MAKEFUN_OUTPUT_DIR when set). Nothing else happens.
+Running this file does one thing only: it places that image
+where the grader looks for it, /output/entry.png (or the
+folder named by $MAKEFUN_OUTPUT_DIR when that is set).
 There is no clock, no randomness and no network access, so
-every run writes the very same bytes.
+every run writes exactly the same bytes.
 """
 
 import hashlib
 import os
 import shutil
 
-FRONT_PAGE = "entry.png"
-DEFAULT_OUT = "/output"
-PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+PAGE = "entry.png"
+OUT_DEFAULT = "/output"
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
-def bundled_image():
-    base = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base, "assets", FRONT_PAGE)
+def bundled_page():
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(here, "assets", PAGE)
 
 
-def destination_dir():
-    return os.environ.get("MAKEFUN_OUTPUT_DIR") or DEFAULT_OUT
+def out_directory():
+    return os.environ.get("MAKEFUN_OUTPUT_DIR") or OUT_DEFAULT
 
 
-def file_sha256(path):
-    hasher = hashlib.sha256()
-    with open(path, "rb") as stream:
-        while True:
-            block = stream.read(65536)
-            if not block:
-                break
-            hasher.update(block)
-    return hasher.hexdigest()
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(65536), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
-def looks_like_png(path):
-    with open(path, "rb") as stream:
-        return stream.read(len(PNG_SIGNATURE)) == PNG_SIGNATURE
+def is_a_png(path):
+    with open(path, "rb") as handle:
+        return handle.read(len(PNG_MAGIC)) == PNG_MAGIC
 
 
 def run():
-    source = bundled_image()
-    if not os.path.isfile(source):
-        raise FileNotFoundError("front page missing: " + source)
-    if not looks_like_png(source):
-        raise ValueError("front page is not a PNG file: " + source)
+    original = bundled_page()
+    if not os.path.isfile(original):
+        raise FileNotFoundError("front page is missing: " + original)
+    if not is_a_png(original):
+        raise ValueError("front page is not a PNG file: " + original)
 
-    out_dir = destination_dir()
-    if os.path.isfile(out_dir):
-        raise NotADirectoryError("output path is a file, not a folder: " + out_dir)
-    os.makedirs(out_dir, exist_ok=True)
-    target = os.path.join(out_dir, FRONT_PAGE)
-    shutil.copyfile(source, target)
+    folder = out_directory()
+    if os.path.isfile(folder):
+        raise NotADirectoryError("output path is a file, not a folder: " + folder)
+    os.makedirs(folder, exist_ok=True)
+    written = os.path.join(folder, PAGE)
+    shutil.copyfile(original, written)
 
-    # A partial copy would silently break the entry, so the
-    # result is checked against the bundled original: same
-    # byte count and same sha256, or the run fails loudly.
-    if os.path.getsize(target) != os.path.getsize(source):
-        raise IOError("output is the wrong size: " + target)
-    if file_sha256(target) != file_sha256(source):
-        raise IOError("output does not match the bundled image: " + target)
+    # A short copy would silently break the entry, so the
+    # written file is checked against the bundled original:
+    # identical size and identical sha256, or the run fails.
+    if os.path.getsize(written) != os.path.getsize(original):
+        raise IOError("written image has the wrong size: " + written)
+    if sha256_file(written) != sha256_file(original):
+        raise IOError("written image differs from the bundled one: " + written)
 
 
 if __name__ == "__main__":

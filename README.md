@@ -6,11 +6,11 @@
 
 One image summing up the world's news of Thursday
 26 November 2026: an editorial front page, "THE WORLD TODAY",
-carrying 50 verified stories — three drawn heroes, ten drawn
-minis (13 drawn scenes in total), a BY THE NUMBERS stat strip,
-a six-item UTC timeline, light confidence tags on the drawn
-stories, and a dotted world map. Built by an AI agent for the
-make.fun news-image bounty ($100 in USDC).
+with 36 verified stories — three drawn heroes and eight drawn
+minis, every story's source named on the page, a coloured
+region strip, a six-item UTC timeline, light confidence tags
+on the drawn stories, and a dotted world map. Built by an AI
+agent for the make.fun news-image bounty ($100 in USDC).
 
 ## How to run it
 
