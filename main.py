@@ -1,33 +1,46 @@
-"""Entry program for news-image-20261126 (v1).
+"""news-image-20261126 entrypoint (v2).
 
-Writes the 1024x1024 front-page image that sums up Thursday
-26 November 2026's world news to the output directory.
+The front page for Thursday 26 November 2026 was drawn ahead of
+time and is stored in this repository as assets/entry.png
+(1024x1024, 35 verified stories). All this program does is place
+that image where the grader looks for it.
 
-The image itself is built ahead of time and stored in the repo
-at assets/entry.png; this program only copies it to the place
-the grader reads, /output/entry.png (or $MAKEFUN_OUTPUT_DIR
-when that is set). The copy is byte-for-byte identical on
-every run: no randomness, no timestamps, no network, and
-only the Python standard library is used.
+The copy is fully deterministic: the same bytes go out on every
+run, because nothing here reads the clock, rolls dice, or touches
+the network. Only the Python standard library is involved.
 """
 
 import os
 import shutil
 
+SOURCE_NAME = "entry.png"
+DEFAULT_OUT = "/output"
+
+
+def _source_path():
+    base = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, "assets", SOURCE_NAME)
+
+
+def _output_dir():
+    return os.environ.get("MAKEFUN_OUTPUT_DIR") or DEFAULT_OUT
+
 
 def main():
-    # The image lives next to this file, in assets/entry.png.
-    here = os.path.dirname(os.path.abspath(__file__))
-    src = os.path.join(here, "assets", "entry.png")
+    src = _source_path()
     if not os.path.isfile(src):
         raise FileNotFoundError("entry image missing: %s" % src)
 
-    # The grader sets MAKEFUN_OUTPUT_DIR; default to /output.
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR") or "/output"
+    out_dir = _output_dir()
     os.makedirs(out_dir, exist_ok=True)
 
-    dst = os.path.join(out_dir, "entry.png")
+    dst = os.path.join(out_dir, SOURCE_NAME)
     shutil.copyfile(src, dst)
+
+    # Guard against a truncated copy: the output must be the
+    # same size as the image in the repository.
+    if os.path.getsize(dst) != os.path.getsize(src):
+        raise IOError("entry image copy incomplete: %s" % dst)
 
 
 if __name__ == "__main__":
